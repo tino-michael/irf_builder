@@ -9,6 +9,6 @@ setup(
     packages=['irf_builder'],
     scripts=['scripts/make_point-source_irfs.py'],
     install_requires=['numpy', 'scipy', 'scikit-learn', 'astropy', 'pandas',
-                      # 'yaml',  #  `python setpu.py` somehow cannot find this...
+                      # 'yaml',  #  `python setup.py` somehow cannot find this...
                       'matplotlib', 'gammapy']
 )

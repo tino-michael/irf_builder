@@ -68,12 +68,12 @@ show_plots_group.add_argument('--plot_classification', default=False, action='st
 
 store_plots_group = parser.add_argument_group()
 store_plots_group.add_argument('--store_plots', default=False, action='store_true',
-                               help="write plots to disk as a list of file formats")
+                               help="write plots to disk in a list of file formats")
 store_plots_group.add_argument('--picture_formats', type=str, nargs='*',
                                default=["pdf", "png", "tex"],
-                               help="list of file formats to write out plots as")
+                               help="list of file formats to write plots out as")
 store_plots_group.add_argument('--picture_outdir', type=str, default='plots',
-                               help="directory to write the created plots in")
+                               help="directory to write the created plots into")
 
 args = parser.parse_args()
 

@@ -245,7 +245,7 @@ def plot_sensitivity(sensitivities):
             marker="s",
             label=irf.plotting.mode_map[mode])
 
-    # plt.legend(title=f"Obsetvation Time: {irf.observation_time}", loc=1)
+    plt.legend(title=f"Obsetvation Time: {irf.observation_time}", loc=1)
     plt.xlabel(r'$E_\mathrm{reco}$' + ' / {:latex}'.format(irf.energy_unit))
     plt.ylabel(r'$E^2 \Phi /$ {:latex}'.format(irf.sensitivity_unit))
     plt.gca().set_xscale("log")

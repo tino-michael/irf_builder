@@ -13,3 +13,4 @@ The module provides methods to generate event weights, do the event selection
 - [ ] write out the produced IRFs in an agreed upon format
 - [ ] add more plots concerning event discrimination
 - [x] write out plots
+- [ ] unit test everything

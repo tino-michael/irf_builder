@@ -35,6 +35,8 @@ parser.add_argument('--infile', type=str, default="classified_events")
 parser.add_argument('--meta_file', type=str, default="meta_data.yml")
 parser.add_argument('--r_scale', type=float, default=5.)
 parser.add_argument('-k', type=int, default=1, help="order of spline interpolation")
+parser.add_argument('--modes', type=str, nargs='*', default=["wave", "tail"],
+                    help="list of data processing modes")
 
 cut_store_group = parser.add_mutually_exclusive_group()
 cut_store_group.add_argument('--make_cuts', action='store_true', default=False,
@@ -81,12 +83,13 @@ irf.r_scale = args.r_scale
 irf.alpha = irf.r_scale**-2
 irf.plotting.file_formats = args.picture_formats
 
+
 # reading the meta data that describes the MC production
 irf.meta_data = irf.load_meta_data(f"{args.indir}/{args.meta_file}")
 
 # reading the reconstructed and classified events
 all_events = {}
-for mode in ["wave", "tail"]:
+for mode in args.modes:
     all_events[mode] = {}
     for c, channel in irf.plotting.channel_map.items():
         all_events[mode][c] = \
@@ -181,15 +184,15 @@ for mode, events in all_events.items():
 
 
 # applying the cuts
-cut_events = dict(
-    (m, irf.event_selection.apply_cuts(e, ["pass_gammaness", "pass_theta"]))
-    for m, e in all_events.items())
+cut_events = {}
+gamma_events = {}
+for mode, events in all_events.items():
+    gamma_events[mode] = irf.event_selection.apply_cuts(events, ["pass_gammaness"])
+    cut_events[mode] = irf.event_selection.apply_cuts(events,
+                                                      ["pass_gammaness", "pass_theta"])
 
-gamma_events = dict(
-    (m, irf.event_selection.apply_cuts(e, ["pass_gammaness"]))
-    for m, e in all_events.items())
 
-
+# printing selected number events and summed weights
 for step, evs in {"reco": all_events,
                   "gammaness": gamma_events,
                   "theta": cut_events}.items():
@@ -202,9 +205,11 @@ for step, evs in {"reco": all_events,
 
 
 # measure and correct for the energy bias
-energy_resolution = irf.irfs.energy.get_energy_resolution(cut_events["wave"])
-energy_bias = irf.irfs.energy.get_energy_bias(cut_events["wave"])
-irf.irfs.energy.correct_energy_bias(cut_events["wave"], energy_bias['g'])
+energy_resolution, energy_bias = {}, {}
+for mode in args.modes:
+    energy_resolution[mode] = irf.irfs.energy.get_energy_resolution(cut_events[mode])
+    energy_bias[mode] = irf.irfs.energy.get_energy_bias(cut_events[mode])
+    irf.irfs.energy.correct_energy_bias(cut_events[mode], energy_bias[mode]['g'])
 
 
 # finally, calculate the sensitivity
@@ -222,104 +227,118 @@ for mode, events in cut_events.items():
 # ##        ##       ##     ##    ##    ##    ##
 # ##        ########  #######     ##     ######
 
+# args.modes = ["wave"]  # for now I'm not interested in plotting and printing everything
 if args.plot_energy or args.plot_all:
-    plt.figure(figsize=(10, 5))
-    energy_matrix = irf.irfs.energy.get_energy_migration_matrix(cut_events["wave"])
-    irf.plotting.plot_energy_migration_matrix(energy_matrix)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/energy_migration")
+    energy_matrix, rel_delta_e_reco, rel_delta_e_mc = {}, {}, {}
+    for mode in args.modes:
+        plt.figure(figsize=(10, 5))
+        energy_matrix[mode] = \
+            irf.irfs.energy.get_energy_migration_matrix(cut_events[mode])
+        irf.plotting.plot_energy_migration_matrix(energy_matrix)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/energy_migration_{mode}")
 
-    plt.figure(figsize=(10, 5))
-    rel_delta_e_reco, xlabel, ylabel = \
-        irf.irfs.energy.get_rel_delta_e(cut_events["wave"])
-    irf.plotting.plot_rel_delta_e(rel_delta_e_reco, xlabel, ylabel)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/energy_relative_error_reco")
+        plt.figure(figsize=(10, 5))
+        rel_delta_e_reco[mode], xlabel, ylabel = \
+            irf.irfs.energy.get_rel_delta_e(cut_events[mode])
+        irf.plotting.plot_rel_delta_e(rel_delta_e_reco[mode], xlabel, ylabel)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/energy_relative_error_reco_{mode}")
 
-    plt.figure(figsize=(10, 5))
-    rel_delta_e_mc, xlabel, ylabel = \
-        irf.irfs.energy.get_rel_delta_e(cut_events["wave"], ref_energy="mc")
-    irf.plotting.plot_rel_delta_e(rel_delta_e_mc, xlabel, ylabel)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/energy_relative_error_mc")
+        plt.figure(figsize=(10, 5))
+        rel_delta_e_mc[mode], xlabel, ylabel = \
+            irf.irfs.energy.get_rel_delta_e(cut_events[mode], ref_energy="mc")
+        irf.plotting.plot_rel_delta_e(rel_delta_e_mc[mode], xlabel, ylabel)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/energy_relative_error_mc_{mode}")
 
-    plt.figure()
-    irf.plotting.plot_energy_resolution(energy_resolution)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/energy_resolution")
+        plt.figure()
+        irf.plotting.plot_energy_resolution(energy_resolution[mode])
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/energy_resolution_{mode}")
 
-    plt.figure()
-    irf.plotting.plot_energy_bias(energy_bias)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/energy_bias")
+        plt.figure()
+        irf.plotting.plot_energy_bias(energy_bias[mode])
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/energy_bias_{mode}")
 
-    plt.figure()
-    energy_bias_2 = irf.irfs.energy.get_energy_bias(cut_events["wave"])
-    irf.plotting.plot_energy_bias(energy_bias_2)
-    plt.title("post e-bias correction")
+        plt.figure()
+        energy_bias_2 = irf.irfs.energy.get_energy_bias(cut_events[mode])
+        irf.plotting.plot_energy_bias(energy_bias_2)
+        plt.title("post e-bias correction")
 
-    plt.figure()
-    energy_resolution2 = irf.irfs.energy.get_energy_resolution(cut_events["wave"])
-    irf.plotting.plot_energy_resolution(energy_resolution2)
-    plt.title("post e-bias correction")
+        plt.figure()
+        energy_resolution2 = irf.irfs.energy.get_energy_resolution(cut_events[mode])
+        irf.plotting.plot_energy_resolution(energy_resolution2)
+        plt.title("post e-bias correction")
 
 
 if args.plot_rates or args.plot_all:
-    plt.figure()
-    energy_fluxes, xlabel = irf.irfs.event_rates.get_energy_event_fluxes(
-        cut_events["wave"], th_cuts["wave"])
-    irf.plotting.plot_energy_event_fluxes(energy_fluxes, xlabel=xlabel)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/fluxes")
+    energy_fluxes, energy_rates = {}, {}
+    for mode in args.modes:
+        plt.figure()
+        energy_fluxes[mode], xlabel = irf.irfs.event_rates.get_energy_event_fluxes(
+            cut_events[mode], th_cuts[mode])
+        irf.plotting.plot_energy_event_fluxes(energy_fluxes[mode], xlabel=xlabel)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/fluxes_{mode}")
 
-    plt.figure()
-    energy_rates, xlabel = \
-        irf.irfs.event_rates.get_energy_event_rates(cut_events["wave"])
-    irf.plotting.plot_energy_event_rates(energy_rates, xlabel=xlabel)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/event_rates")
+        plt.figure()
+        energy_rates[mode], xlabel = \
+            irf.irfs.event_rates.get_energy_event_rates(cut_events[mode])
+        irf.plotting.plot_energy_event_rates(energy_rates[mode], xlabel=xlabel)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/event_rates_{mode}")
 
 
 if args.plot_selection or args.plot_all:
-    eff_areas, selec_effs, selec_events = \
-        irf.irfs.get_effective_areas(cut_events["wave"])
-    plt.figure()
-    irf.plotting.plot_effective_areas(eff_areas)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/effective_areas")
-    plt.figure()
-    irf.plotting.plot_selection_efficiencies(selec_effs)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/selection_efficiencies")
+    eff_areas, selec_effs, selec_events = {}, {}, {}
+    generator_energies = {}
+    for mode in args.modes:
+        eff_areas[mode], selec_effs[mode], selec_events[mode] = \
+            irf.irfs.get_effective_areas(cut_events[mode])
+        plt.figure()
+        irf.plotting.plot_effective_areas(eff_areas[mode])
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/effective_areas_{mode}")
+        plt.figure()
+        irf.plotting.plot_selection_efficiencies(selec_effs[mode])
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/selection_efficiencies_{mode}")
 
-    plt.figure()
-    generator_energies = irf.irfs.get_simulated_energy_distribution(cut_events["wave"])
-    irf.plotting.plot_energy_distribution(energies=generator_energies)
+        plt.figure()
+        generator_energies[mode] = \
+            irf.irfs.get_simulated_energy_distribution(cut_events[mode])
+        irf.plotting.plot_energy_distribution(energies=generator_energies[mode])
 
-    plt.plot(irf.e_bin_centres, selec_events['p'], label="sel. protons")
-    plt.plot(irf.e_bin_centres, selec_events['g'], label="sel. gammas")
-    plt.legend()
-    plt.gca().set_xscale("log")
-    plt.gca().set_yscale("log")
+        plt.plot(irf.e_bin_centres, selec_events[mode]['p'], label="sel. protons")
+        plt.plot(irf.e_bin_centres, selec_events[mode]['g'], label="sel. gammas")
+        plt.legend()
+        plt.gca().set_xscale("log")
+        plt.gca().set_yscale("log")
 
 
 if args.plot_ang_res or args.plot_all:
-    plt.figure()
-    th_sq, bin_e = irf.irfs.angular_resolution.get_theta_square(cut_events["wave"])
-    irf.plotting.plot_theta_square(th_sq, bin_e)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/theta_square")
+    the_sq, xi = {}, {}
+    for mode in args.modes:
+        plt.figure()
+        th_sq[mode], bin_e = \
+            irf.irfs.angular_resolution.get_theta_square(cut_events[mode])
+        irf.plotting.plot_theta_square(th_sq[mode], bin_e)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/theta_square_{mode}")
 
-    plt.figure()
-    xi, xlabel = irf.irfs.angular_resolution.get_angular_resolution(gamma_events["wave"])
-    irf.plotting.plot_angular_resolution(xi, xlabel)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/angular_resolution")
+        plt.figure()
+        xi["wave"], xlabel = \
+            irf.irfs.angular_resolution.get_angular_resolution(gamma_events[mode])
+        irf.plotting.plot_angular_resolution(xi[mode], xlabel)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/angular_resolution_{mode}")
 
-    plt.figure()
-    irf.plotting.plot_angular_resolution_violin(gamma_events["wave"])
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/angular_violins")
+        plt.figure()
+        irf.plotting.plot_angular_resolution_violin(gamma_events[mode])
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/angular_violins_{mode}")
 
 
 if args.plot_sensitivity or args.plot_all:
@@ -332,11 +351,18 @@ if args.plot_sensitivity or args.plot_all:
 
 
 if args.plot_classification or args.plot_all:
-    plt.figure()
-    false_p_rate, true_p_rate, roc_area_under_curve = \
-        irf.irfs.classification.get_roc_curve(all_events["wave"])
-    irf.plotting.plot_roc_curve(false_p_rate, true_p_rate, roc_area_under_curve)
-    if args.store_plots:
-        save_fig(f"{args.picture_outdir}/ROC_curve")
+    false_p_rate, true_p_rate = {}, {}
+    for mode in args.modes:
+        plt.figure()
+        false_p_rate[mode], true_p_rate[mode], roc_area_under_curve = \
+            irf.irfs.classification.get_roc_curve(all_events[mode])
+        irf.plotting.plot_roc_curve(false_p_rate[mode], true_p_rate[mode],
+                                    roc_area_under_curve)
+        if args.store_plots:
+            save_fig(f"{args.picture_outdir}/ROC_curve_{mode}")
+
+
+from irf_builder.writer import write_irfs
+write_irfs("foo.h5", global_names=locals())
 
 plt.show()

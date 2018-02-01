@@ -175,6 +175,7 @@ def point_source_sensitivity(events, energy_bin_edges,
         # counts in the on-region, `sigma_lima` will break! Skip those
         # cases, too.
         if N_events[0] <= 0:
+            sensitivities.add_row([emid, np.nan, np.nan, np.nan])
             continue
 
         if mode.lower() == "data":

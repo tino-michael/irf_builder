@@ -30,13 +30,20 @@ def correct_off_angle(data, origin=None):
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--indir',
-                    default=expandvars("$CTA_SOFT/tino_cta/data/prod3b/paranal_LND"))
-parser.add_argument('--infile', type=str, default="classified_events")
-parser.add_argument('--meta_file', type=str, default="meta_data.yml")
-parser.add_argument('--r_scale', type=float, default=5.)
+                    default=expandvars("$CTA_SOFT/tino_cta/data/prod3b/paranal_LND"),
+                    help="directory to look up the input files")
+parser.add_argument('--infile', type=str, default="classified_events",
+                    help="base of the input files' name before mode and channel")
+parser.add_argument('--meta_file', type=str, default="meta_data.yml",
+                    help="name of the config file that contains information\n"
+                         "(energy range, number of processed files etc.)")
+parser.add_argument('--r_scale', type=float, default=5.,
+                    help="scale by which to increase radius of the off-region")
 parser.add_argument('-k', type=int, default=1, help="order of spline interpolation")
 parser.add_argument('--modes', type=str, nargs='*', default=["wave", "tail"],
                     help="list of data processing modes")
+parser.add_argument('--write_irfs', default=False, action='store_true',
+                    help="write out produced IRFs in an HDF5 file")
 
 cut_store_group = parser.add_mutually_exclusive_group()
 cut_store_group.add_argument('--make_cuts', action='store_true', default=False,
@@ -92,12 +99,17 @@ all_events = {}
 for mode in args.modes:
     all_events[mode] = {}
     for c, channel in irf.plotting.channel_map.items():
-        all_events[mode][c] = \
-            pd.read_hdf(f"{args.indir}/{args.infile}_{channel}_{mode}.h5")
+        # all_events[mode][c] = \
+        these_events = \
+            pd.read_hdf(f"{args.indir}/{args.infile}_{mode}_{channel}.h5")
+
+        # make sure to remove not-reconstructed events (contain nan-values)
+        all_events[mode][c] = these_events[these_events["gammaness"] ==
+                                           these_events["gammaness"]]
 
 # FUCK FUCK FUCK FUCK
-for c in irf.plotting.channel_map:
-    correct_off_angle(all_events["wave"][c])
+# for c in irf.plotting.channel_map:
+#     correct_off_angle(all_events["wave"][c])
 
 
 # adding a "weight" column to the data tables
@@ -226,15 +238,14 @@ for mode, events in cut_events.items():
 # ##        ##       ##     ##    ##          ##
 # ##        ##       ##     ##    ##    ##    ##
 # ##        ########  #######     ##     ######
-
-# args.modes = ["wave"]  # for now I'm not interested in plotting and printing everything
+args.modes = ['wave']
 if args.plot_energy or args.plot_all:
     energy_matrix, rel_delta_e_reco, rel_delta_e_mc = {}, {}, {}
     for mode in args.modes:
         plt.figure(figsize=(10, 5))
         energy_matrix[mode] = \
             irf.irfs.energy.get_energy_migration_matrix(cut_events[mode])
-        irf.plotting.plot_energy_migration_matrix(energy_matrix)
+        irf.plotting.plot_energy_migration_matrix(energy_matrix[mode])
         if args.store_plots:
             save_fig(f"{args.picture_outdir}/energy_migration_{mode}")
 
@@ -265,12 +276,12 @@ if args.plot_energy or args.plot_all:
         plt.figure()
         energy_bias_2 = irf.irfs.energy.get_energy_bias(cut_events[mode])
         irf.plotting.plot_energy_bias(energy_bias_2)
-        plt.title("post e-bias correction")
+        plt.title("Energy Bias (post e-bias correction)")
 
         plt.figure()
         energy_resolution2 = irf.irfs.energy.get_energy_resolution(cut_events[mode])
         irf.plotting.plot_energy_resolution(energy_resolution2)
-        plt.title("post e-bias correction")
+        plt.title("Energy Resolution (post e-bias correction)")
 
 
 if args.plot_rates or args.plot_all:
@@ -319,7 +330,7 @@ if args.plot_selection or args.plot_all:
 
 
 if args.plot_ang_res or args.plot_all:
-    the_sq, xi = {}, {}
+    th_sq, xi = {}, {}
     for mode in args.modes:
         plt.figure()
         th_sq[mode], bin_e = \
@@ -329,7 +340,7 @@ if args.plot_ang_res or args.plot_all:
             save_fig(f"{args.picture_outdir}/theta_square_{mode}")
 
         plt.figure()
-        xi["wave"], xlabel = \
+        xi[mode], xlabel = \
             irf.irfs.angular_resolution.get_angular_resolution(gamma_events[mode])
         irf.plotting.plot_angular_resolution(xi[mode], xlabel)
         if args.store_plots:
@@ -362,7 +373,8 @@ if args.plot_classification or args.plot_all:
             save_fig(f"{args.picture_outdir}/ROC_curve_{mode}")
 
 
-from irf_builder.writer import write_irfs
-write_irfs("foo.h5", global_names=locals())
+if args.write_irfs:
+    from irf_builder.writer import write_irfs
+    write_irfs("foo.h5", global_names=locals())
 
 plt.show()

@@ -16,11 +16,12 @@ from .event_selection import minimise_sensitivity_per_bin as optimise_cuts
 from .sensitivity import point_source_sensitivity as calculate_sensitivity
 
 
-# the header entries for the simulated and reconstructed energies
-# and offset angle
+# the header entries for a number of quantities
 energy_names = {"mc": "MC_Energy",
                 "reco": "reco_Energy"}
+reco_error_name = "xi"
 offset_angle_name = "off_angle"
+
 
 # your favourite units here
 angle_unit = u.deg

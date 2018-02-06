@@ -106,16 +106,16 @@ def get_energy_bias(events):
 
 
 def plot_energy_bias(energy_bias, channels=None):
+
     channels = channels or ['g']
-    for i, ch in enumerate(channels):
-        plt.gcf().add_subplot(111 + i)
-        plt.plot(irf.e_bin_centres, energy_bias[ch],
-                 color=irf.plotting.channel_colour_map[ch],
-                 label=irf.plotting.channel_map[ch])
-        plt.gca().set_xlabel(r"$E_\mathrm{reco}$ / TeV")
-    plt.gcf().axes[0].set_ylabel(r"$E_\mathrm{MC}/E_\mathrm{reco} - 1$")
-    plt.xscale('log')
-    plt.grid()
+    irf.plotting.plot_channels_lines(
+        data=dict((ch, energy_bias[ch]) for ch in channels),
+        ylabel=r"$E_\mathrm{MC}/E_\mathrm{reco} - 1$",
+        title="Energy Bias"
+    )
+    plt.gca().set_yscale("linear")
+
+    return
 
 
 def correct_energy_bias(events, energy_bias, k=1):
@@ -151,14 +151,14 @@ def get_energy_resolution(events, ref_energy="reco", percentile=68):
     return energy_resolution
 
 
-def plot_energy_resolution(energy_resolution):
-    # for ch in energy_resolution:
-    for ch in ['g']:
-        plt.plot(irf.e_bin_centres, energy_resolution[ch],
-                 label=irf.plotting.channel_map[ch],
-                 color=irf.plotting.channel_colour_map[ch])
-    plt.xlabel(r"$E_\mathrm{reco}$ / TeV")
-    plt.ylabel(r"$(|E_\mathrm{reco} - E_\mathrm{MC}|)_{68}/E_\mathrm{reco}$")
-    plt.gca().set_xscale("log")
-    plt.legend()
-    plt.grid()
+def plot_energy_resolution(energy_resolution, channels=None):
+
+    channels = channels or ['g']
+    irf.plotting.plot_channels_lines(
+        data=dict((ch, energy_resolution[ch]) for ch in channels),
+        ylabel=r"$(|E_\mathrm{reco} - E_\mathrm{MC}|)_{68}/E_\mathrm{reco}$",
+        title="Energy Resolution"
+    )
+    plt.gca().set_yscale("linear")
+
+    return

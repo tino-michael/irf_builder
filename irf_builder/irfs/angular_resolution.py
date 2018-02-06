@@ -41,7 +41,7 @@ def percentiles(values, bin_values, bin_edges, percentile):
 def get_angular_resolution(events, percent=68, ref_energy="reco"):
     xi_xx = {}
     for channel, values in events.items():
-            xi_xx[channel] = percentiles(values[irf.offset_angle_name],
+            xi_xx[channel] = percentiles(values[irf.reco_error_name],
                                          values[irf.energy_names[ref_energy]],
                                          irf.e_bin_edges.value, percent)
     if ref_energy == "reco":

@@ -93,7 +93,7 @@ def get_energy_event_fluxes(events, th_cuts, ref_energy="reco"):
 def plot_energy_event_fluxes(energy_fluxes, xlabel=None):
     irf.plotting.plot_channels_lines(
         energy_fluxes, xlabel=xlabel,
-        ylabel=r"event flux $f / (\mathrm{s}^{-1}*\mathrm{deg}^{-2})$")
+        ylabel=r"event flux $f / (\mathrm{s}^{-1} \cdot \mathrm{deg}^{-2})$")
 
 
 def plot_energy_event_rates(energy_rates, xlabel=None):

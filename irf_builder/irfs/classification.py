@@ -36,3 +36,4 @@ def plot_roc_curve(fpr, tpr, roc_auc):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver operating characteristic')
     plt.legend()
+    plt.tight_layout()

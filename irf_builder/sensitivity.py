@@ -253,3 +253,4 @@ def plot_sensitivity(sensitivities):
     plt.grid()
     plt.xlim([1e-2, 2e2])
     plt.ylim([5e-15, 5e-10])
+    plt.tight_layout()

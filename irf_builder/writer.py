@@ -70,6 +70,4 @@ def write_irfs(outfile_path, global_names):
         for mode in cut:
             irf_frame['_'.join([cut_name, mode])] = cut[mode]
 
-    print(irf_frame)
-
     # outfile = pd.HDFStore(outfile_path)

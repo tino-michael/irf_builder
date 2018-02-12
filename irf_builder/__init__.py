@@ -13,7 +13,7 @@ from .meta_data_loader import load_meta_data_from_yml as load_meta_data
 from .weighting import unbinned_wrapper as make_weights
 from .irfs import effective_areas
 from .event_selection import minimise_sensitivity_per_bin as optimise_cuts
-from .sensitivity import point_source_sensitivity as calculate_sensitivity
+from .sensitivity import differential_energy_point_source as calculate_sensitivity
 
 
 # the header entries for a number of quantities

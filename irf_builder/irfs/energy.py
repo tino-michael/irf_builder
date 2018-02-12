@@ -114,8 +114,10 @@ def plot_energy_bias(energy_bias, channels=None):
         title="Energy Bias"
     )
     plt.gca().set_yscale("linear")
-
-    return
+    plt.gca().set_ylim((-.2, 0.2))
+    plt.subplots_adjust(top=0.918, bottom=0.154,
+                        left=0.164, right=0.971,
+                        hspace=0.2, wspace=0.4)
 
 
 def correct_energy_bias(events, energy_bias, k=1):
@@ -160,5 +162,7 @@ def plot_energy_resolution(energy_resolution, channels=None):
         title="Energy Resolution"
     )
     plt.gca().set_yscale("linear")
-
-    return
+    plt.gca().set_ylim((0, 0.6))
+    plt.subplots_adjust(top=0.918, bottom=0.154,
+                        left=0.128, right=0.971,
+                        hspace=0.2, wspace=0.4)

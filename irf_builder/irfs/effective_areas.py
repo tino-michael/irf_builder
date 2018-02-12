@@ -102,6 +102,7 @@ def plot_effective_areas(eff_areas):
     """
     irf.plotting.plot_channels_lines(eff_areas, title="Effective Areas",
                                      ylabel=r"$A_\mathrm{eff} / \mathrm{m}^2$")
+    plt.gca().set_ylim((1e-1, 1e7))
 
 
 def plot_selection_efficiencies(selec_effs):
@@ -114,3 +115,4 @@ def plot_selection_efficiencies(selec_effs):
     """
     irf.plotting.plot_channels_lines(selec_effs, title="selection Efficiencies",
                                      ylabel="fraction of selected events")
+    plt.gca().set_ylim(1e-7, .5)

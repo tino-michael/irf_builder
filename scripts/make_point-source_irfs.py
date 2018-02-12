@@ -81,7 +81,7 @@ store_plots_group.add_argument('--store_plots', default=False, action='store_tru
 store_plots_group.add_argument('--picture_formats', type=str, nargs='*',
                                default=["pdf", "png", "tex"],
                                help="list of file formats to write plots out as")
-store_plots_group.add_argument('--picture_outdir', type=str, default='plots',
+store_plots_group.add_argument('--plots_outdir', type=str, default='plots',
                                help="directory to write the created plots into")
 
 args = parser.parse_args()
@@ -108,8 +108,12 @@ for mode in args.modes:
                                            these_events["gammaness"]]
 
 # FUCK FUCK FUCK FUCK
-# for c in irf.plotting.channel_map:
-#     correct_off_angle(all_events["wave"][c])
+irf.reco_error_name = "off_angle"
+try:
+    for c in irf.plotting.channel_map:
+        correct_off_angle(all_events["wave"][c])
+except KeyError:
+    pass
 
 
 # adding a "weight" column to the data tables
@@ -180,7 +184,7 @@ for mode in cut_energies:
                             left=0.077, right=0.981,
                             hspace=0.2, wspace=0.204)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/cut_values_{mode}")
+            save_fig(f"{args.plots_outdir}/cut_values_{mode}")
         plt.pause(.1)
 
 
@@ -247,31 +251,31 @@ if args.plot_energy or args.plot_all:
             irf.irfs.energy.get_energy_migration_matrix(cut_events[mode])
         irf.plotting.plot_energy_migration_matrix(energy_matrix[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/energy_migration_{mode}")
+            save_fig(f"{args.plots_outdir}/energy_migration_{mode}")
 
         plt.figure(figsize=(10, 5))
         rel_delta_e_reco[mode], xlabel, ylabel = \
             irf.irfs.energy.get_rel_delta_e(cut_events[mode])
         irf.plotting.plot_rel_delta_e(rel_delta_e_reco[mode], xlabel, ylabel)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/energy_relative_error_reco_{mode}")
+            save_fig(f"{args.plots_outdir}/energy_relative_error_reco_{mode}")
 
         plt.figure(figsize=(10, 5))
         rel_delta_e_mc[mode], xlabel, ylabel = \
             irf.irfs.energy.get_rel_delta_e(cut_events[mode], ref_energy="mc")
         irf.plotting.plot_rel_delta_e(rel_delta_e_mc[mode], xlabel, ylabel)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/energy_relative_error_mc_{mode}")
+            save_fig(f"{args.plots_outdir}/energy_relative_error_mc_{mode}")
 
         plt.figure()
         irf.plotting.plot_energy_resolution(energy_resolution[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/energy_resolution_{mode}")
+            save_fig(f"{args.plots_outdir}/energy_resolution_{mode}")
 
         plt.figure()
         irf.plotting.plot_energy_bias(energy_bias[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/energy_bias_{mode}")
+            save_fig(f"{args.plots_outdir}/energy_bias_{mode}")
 
         plt.figure()
         energy_bias_2 = irf.irfs.energy.get_energy_bias(cut_events[mode])
@@ -292,14 +296,14 @@ if args.plot_rates or args.plot_all:
             cut_events[mode], th_cuts[mode])
         irf.plotting.plot_energy_event_fluxes(energy_fluxes[mode], xlabel=xlabel)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/fluxes_{mode}")
+            save_fig(f"{args.plots_outdir}/fluxes_{mode}")
 
         plt.figure()
         energy_rates[mode], xlabel = \
             irf.irfs.event_rates.get_energy_event_rates(cut_events[mode])
         irf.plotting.plot_energy_event_rates(energy_rates[mode], xlabel=xlabel)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/event_rates_{mode}")
+            save_fig(f"{args.plots_outdir}/event_rates_{mode}")
 
 
 if args.plot_selection or args.plot_all:
@@ -311,11 +315,11 @@ if args.plot_selection or args.plot_all:
         plt.figure()
         irf.plotting.plot_effective_areas(eff_areas[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/effective_areas_{mode}")
+            save_fig(f"{args.plots_outdir}/effective_areas_{mode}")
         plt.figure()
         irf.plotting.plot_selection_efficiencies(selec_effs[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/selection_efficiencies_{mode}")
+            save_fig(f"{args.plots_outdir}/selection_efficiencies_{mode}")
 
         plt.figure()
         generator_energies[mode] = \
@@ -337,19 +341,19 @@ if args.plot_ang_res or args.plot_all:
             irf.irfs.angular_resolution.get_theta_square(cut_events[mode])
         irf.plotting.plot_theta_square(th_sq[mode], bin_e)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/theta_square_{mode}")
+            save_fig(f"{args.plots_outdir}/theta_square_{mode}")
 
         plt.figure()
         xi[mode], xlabel = \
             irf.irfs.angular_resolution.get_angular_resolution(gamma_events[mode])
         irf.plotting.plot_angular_resolution(xi[mode], xlabel)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/angular_resolution_{mode}")
+            save_fig(f"{args.plots_outdir}/angular_resolution_{mode}")
 
         plt.figure()
         irf.plotting.plot_angular_resolution_violin(gamma_events[mode])
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/angular_violins_{mode}")
+            save_fig(f"{args.plots_outdir}/angular_violins_{mode}")
 
 
 if args.plot_sensitivity or args.plot_all:
@@ -358,7 +362,7 @@ if args.plot_sensitivity or args.plot_all:
     irf.plotting.plot_reference()
     irf.plotting.plot_sensitivity(sensitivity)
     if args.store_plots:
-        save_fig(f"{args.picture_outdir}/sensitivity")
+        save_fig(f"{args.plots_outdir}/sensitivity")
 
 
 if args.plot_classification or args.plot_all:
@@ -370,7 +374,7 @@ if args.plot_classification or args.plot_all:
         irf.plotting.plot_roc_curve(false_p_rate[mode], true_p_rate[mode],
                                     roc_area_under_curve)
         if args.store_plots:
-            save_fig(f"{args.picture_outdir}/ROC_curve_{mode}")
+            save_fig(f"{args.plots_outdir}/ROC_curve_{mode}")
 
 
 if args.write_irfs:

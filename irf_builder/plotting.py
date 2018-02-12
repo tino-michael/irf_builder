@@ -26,7 +26,8 @@ except ImportError:
 
 
 # pull in all the plot functions into one `plotting` namespace
-from irf_builder.sensitivity import plot_sensitivity
+from irf_builder.sensitivity.differential_energy_point_source_sensitivity import \
+    plot_sensitivity
 from irf_builder.irfs.classification import plot_roc_curve
 from irf_builder.irfs.effective_areas import (plot_effective_areas,
                                               plot_selection_efficiencies)
@@ -72,11 +73,16 @@ def save_fig(outname, endings=None, **kwargs):
     uses the package `matplotlib2tikz` to save figures as tikz/pgf plots;
     if not installed, only prints an info message
     """
-    for end in endings or irf.plotting.file_formats:
-        if end == "tex":
-            tikz_save(f"{outname}.{end}", **kwargs)
-        else:
-            plt.savefig(f"{outname}.{end}")
+    try:
+        for end in endings or irf.plotting.file_formats:
+            if end == "tex":
+                tikz_save(f"{outname}.{end}", **kwargs)
+            else:
+                plt.savefig(f"{outname}.{end}")
+    except FileNotFoundError:
+        import os
+        pathname, filename = os.path.split(outname)
+        print(f"path '{pathname}' does not seem to exist -- {filename} not written")
 
 
 def plot_channels_lines(data, ylabel, title=None, xlabel=r"$E_\mathrm{MC}$ / TeV"):

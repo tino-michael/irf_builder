@@ -18,18 +18,27 @@ def sigma_lima(n_on, n_off, alpha=0.2):
     -------
     sigma : float
         the significance of the given off and on counts
-    """
 
+    """
     alpha1 = alpha + 1.0
     n_sum = n_on + n_off
     arg1 = n_on / n_sum
     arg2 = n_off / n_sum
-    term1 = n_on
-    term2 = n_off
-    if n_on > 0:
-        term1 *= np.log((alpha1 / alpha) * arg1)
-    if n_off > 0:
-        term2 *= np.log(alpha1 * arg2)
+
+    # if signal or background is zero, `np.log` will fail
+    # raise an error instead of printing a warning, catch the error and pass
+    with np.errstate(invalid='raise', divide='raise'):
+        term1 = n_on
+        try:
+            term1 *= np.log((alpha1 / alpha) * arg1)
+        except FloatingPointError:
+            pass
+
+        term2 = n_off
+        try:
+            term2 *= np.log(alpha1 * arg2)
+        except FloatingPointError:
+            pass
     sigma = np.sqrt(2.0 * (term1 + term2))
 
     return sigma

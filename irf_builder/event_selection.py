@@ -4,34 +4,32 @@ from scipy import optimize
 import irf_builder as irf
 
 
-def cut_and_sensitivity(cuts, events, bin_edges, r_scale,
+def cut_and_sensitivity(cuts, events, bin_edges,
                         syst_nsim=False, syst_nphy=False):
     """ throw this into a minimiser """
     ga_cut = cuts[0]
     th_cut = cuts[1]
-
-    alpha = r_scale**-2
 
     cut_events = {}
     for key in events:
         cut_events[key] = events[key][
             (events[key]["gammaness"] > ga_cut) &
             # the background regions are larger to gather more statistics
-            (events[key]["off_angle"] < th_cut * (1 if key == 'g' else r_scale))]
+            (events[key]["off_angle"] < th_cut * (1 if key == 'g' else irf.r_scale))]
 
     if syst_nsim and (len(events['g']) < 10 or
-                      len(events['g']) < alpha * 0.05 *
+                      len(events['g']) < irf.alpha * 0.05 *
                       (len(events['p']) + len(events['e']))):
         return 1
 
     if syst_nphy and (np.sum(events['g']['weight']) < 10 or
                       np.sum(events['g']['weight']) <
                       (np.sum(events['p']['weight']) +
-                       np.sum(events['e']['weight'])) * 0.05 * alpha):
+                       np.sum(events['e']['weight'])) * 0.05 * irf.alpha):
         return 1
 
     sensitivities = irf.calculate_sensitivity(
-        cut_events, bin_edges, alpha=alpha, n_draws=10)
+        cut_events, bin_edges, alpha=irf.alpha, n_draws=10)
 
     try:
         return sensitivities["Sensitivity"][0]
@@ -39,7 +37,9 @@ def cut_and_sensitivity(cuts, events, bin_edges, r_scale,
         return 1
 
 
-def minimise_sensitivity_per_bin(events, bin_edges, r_scale):
+def minimise_sensitivity_per_bin(events, bin_edges=None):
+
+    bin_edges = bin_edges or irf.e_bin_edges
 
     cut_energies, ga_cuts, th_cuts = [], [], []
     for elow, ehigh, emid in zip(bin_edges[:-1], bin_edges[1:],
@@ -58,7 +58,7 @@ def minimise_sensitivity_per_bin(events, bin_edges, r_scale):
             args=(cut_events,
                   np.array([elow / irf.energy_unit,
                             ehigh / irf.energy_unit]) * irf.energy_unit,
-                  r_scale)
+                  )
         )
 
         if res.success:

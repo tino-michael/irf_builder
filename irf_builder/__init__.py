@@ -31,10 +31,6 @@ sensitivity_unit = flux_unit * u.erg**2
 
 observation_time = 50 * u.h
 
-# factor by which the radial "Theta-cut" is larger for the off- than for the on-region
-r_scale = 1
-# the ratio between the area of the off-region over the on-region (alpha = r_scale**-2)
-alpha = 1
 
 # define edges to sort events in
 e_bin_edges = np.logspace(-2, 2.5, 20) * u.TeV
@@ -45,3 +41,41 @@ e_bin_centres_fine = np.sqrt(e_bin_edges_fine[:-1] * e_bin_edges_fine[1:])
 
 # use `meta_data_loader` to put information concerning the MC production in here
 meta_data = {"units": {}, "gamma": {}, "proton": {}, "electron": {}}
+
+
+# factor by which the radial "Theta-cut" is
+# larger for the off- than for the on-region
+r_scale = 1
+
+# the ratio between the area of the off-region
+# over the on-region (alpha = r_scale**-2)
+alpha = 1
+
+
+class RegionScaler:
+    '''tiny property-wrapper class to simultaneously set `r_scale` and `alpha`
+    and ensure consistency
+    '''
+    @property
+    def r_scale(self):
+        global r_scale
+        return r_scale
+
+    @r_scale.setter
+    def r_scale(self, val):
+        global r_scale
+        global alpha
+        r_scale = val
+        alpha = val**-2
+
+    @property
+    def alpha(self):
+        global alpha
+        return alpha
+
+    @alpha.setter
+    def alpha(self, val):
+        global r_scale
+        global alpha
+        alpha = val
+        r_scale = val**-.5

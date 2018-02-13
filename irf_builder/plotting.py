@@ -28,6 +28,7 @@ except ImportError:
 # pull in all the plot functions into one `plotting` namespace
 from irf_builder.sensitivity.differential_energy_point_source_sensitivity import \
     plot_sensitivity
+from irf_builder.sensitivity.significance_vs_time import plot_significance_vs_time
 from irf_builder.irfs.classification import plot_roc_curve
 from irf_builder.irfs.effective_areas import (plot_effective_areas,
                                               plot_selection_efficiencies)

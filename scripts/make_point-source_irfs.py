@@ -228,12 +228,18 @@ for mode in args.modes:
     irf.irfs.energy.correct_energy_bias(cut_events[mode], energy_bias[mode]['g'])
 
 
+# energy-integrated significance as a function of observation time
+sigmas = {}
+obs_test_times = np.logspace(-2, 5, 10) * u.s
+for mode, events in cut_events.items():
+    sigmas[mode] = irf.sensitivity.sigma_vs_time(events, obs_test_times)
+
+
 # finally, calculate the sensitivity
 sensitivity = {}
 for mode, events in cut_events.items():
     sensitivity[mode] = irf.calculate_sensitivity(
         events, irf.e_bin_edges, alpha=irf.alpha, n_draws=500)
-
 
 # ########  ##        #######  ########  ######
 # ##     ## ##       ##     ##    ##    ##    ##
@@ -363,6 +369,11 @@ if args.plot_sensitivity or args.plot_all:
     irf.plotting.plot_sensitivity(sensitivity)
     if args.store_plots:
         save_fig(f"{args.plots_outdir}/sensitivity")
+
+    plt.figure()
+    irf.plotting.plot_significance_vs_time(sigmas, obs_test_times)
+    if args.store_plots:
+        save_fig(f"{args.plots_outdir}/significance_vs_time")
 
 
 if args.plot_classification or args.plot_all:

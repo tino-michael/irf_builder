@@ -2,6 +2,7 @@ import numpy as np
 from astropy import units as u
 
 # pull in sub-modules
+from . import writer
 from . import spectra
 from . import plotting
 from . import sensitivity

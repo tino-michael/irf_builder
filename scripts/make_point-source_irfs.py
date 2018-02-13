@@ -15,7 +15,10 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 import irf_builder as irf
+from irf_builder import RegionScaler
 from irf_builder.plotting import save_fig
+
+import irf_builder.writer as writer
 
 
 def correct_off_angle(data, origin=None):
@@ -86,10 +89,8 @@ store_plots_group.add_argument('--plots_outdir', type=str, default='plots',
 
 args = parser.parse_args()
 
-irf.r_scale = args.r_scale
-irf.alpha = irf.r_scale**-2
+RegionScaler().r_scale = args.r_scale
 irf.plotting.file_formats = args.picture_formats
-
 
 # reading the meta data that describes the MC production
 irf.meta_data = irf.load_meta_data(f"{args.indir}/{args.meta_file}")
@@ -131,18 +132,17 @@ for mode, events in all_events.items():
 # determine optimal bin-by-bin cut values and fit splines to them
 
 cut_energies, ga_cuts, th_cuts = {}, {}, {}
-
 if args.make_cuts:
     print("making cut values")
     for mode, events in all_events.items():
         cut_energies[mode], ga_cuts[mode], th_cuts[mode] = \
-            irf.optimise_cuts(events, irf.e_bin_edges, irf.r_scale)
+            irf.optimise_cuts(events)
 
     if args.write_cuts:
         Table([cut_energies[mode], ga_cuts[mode], th_cuts[mode]],
               names=["Energy", "gammaness", "theta"]) \
-            .write(filename=f"{args.indir}/cut_values_{mode}.tex",
-                   # path=args.indir,
+            .write(filename=f"cut_values_{mode}.tex",
+                   path=args.indir,
                    format="ascii.latex")
 else:
     print("loading cut values")
@@ -151,6 +151,8 @@ else:
         cut_energies[mode] = cuts["Energy"]
         ga_cuts[mode] = cuts["gammaness"]
         th_cuts[mode] = cuts["theta"]
+irf.writer.add_cuts(ga_cuts, locals())
+irf.writer.add_cuts(th_cuts, locals())
 
 
 spline_ga, spline_th = {}, {}
@@ -236,9 +238,9 @@ for mode, events in cut_events.items():
 
 
 # finally, calculate the sensitivity
-sensitivity = {}
+sensitivities = {}
 for mode, events in cut_events.items():
-    sensitivity[mode] = irf.calculate_sensitivity(
+    sensitivities[mode] = irf.calculate_sensitivity(
         events, irf.e_bin_edges, alpha=irf.alpha, n_draws=500)
 
 # ########  ##        #######  ########  ######
@@ -366,7 +368,7 @@ if args.plot_sensitivity or args.plot_all:
     plt.figure()
     irf.plotting.plot_crab()
     irf.plotting.plot_reference()
-    irf.plotting.plot_sensitivity(sensitivity)
+    irf.plotting.plot_sensitivity(sensitivities)
     if args.store_plots:
         save_fig(f"{args.plots_outdir}/sensitivity")
 
@@ -389,7 +391,6 @@ if args.plot_classification or args.plot_all:
 
 
 if args.write_irfs:
-    from irf_builder.writer import write_irfs
-    write_irfs("foo.h5", global_names=locals())
+    irf.writer.write_irfs("foo.h5", sensitivities=sensitivities)
 
 plt.show()

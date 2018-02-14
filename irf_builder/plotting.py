@@ -90,18 +90,24 @@ def save_fig(outname, endings=None, **kwargs):
         print(f"path '{pathname}' does not seem to exist -- {filename} not written")
 
 
-def plot_channels_lines(data, ylabel, title=None, xlabel=r"$E_\mathrm{MC}$ / TeV"):
-    """generic plotting function that plots all data in a dictionary as a line plot
+def plot_channels_lines(data, ylabel, bin_centres=None, title=None,
+                        xlabel=r"$E_\mathrm{MC}$ / TeV"):
+    """generic plotting function that plots all data in a dictionary as a line plot.
+    Picks colours and labels assuming gamma/proton/electron channels.
 
     Parameters
     ----------
     data : dict of 1D arrays
         dictionary of the data to be plotted
+    bin_centres : 1D array, optional (default: `irf.e_bin_centres`)
+        "x-values" of the data that is being plotted
     title, ylabel, xlabel : strings (defaults: xlabel=r"$E_\mathrm{MC}$ / TeV")
         text to be put around the plot
+
     """
+    bin_centres = bin_centres or irf.e_bin_centres
     for cl, dat in data.items():
-        plt.plot(irf.e_bin_centres, dat,
+        plt.plot(bin_centres, dat,
                  label=irf.plotting.channel_map[cl],
                  color=irf.plotting.channel_colour_map[cl],
                  marker=irf.plotting.channel_marker_map[cl])
@@ -145,7 +151,7 @@ def plot_reference():
 
 class SquaredScale(mscale.ScaleBase):
     """
-    ScaleBase class for generating squared scale.
+    ScaleBase class for generating squared scale in matplotlib axes.
     shamelessly copied from
     https://stackoverflow.com/questions/42277989/square-root-scale-using-matplotlib-python?answertab=votes#tab-top
     """
@@ -192,4 +198,3 @@ class SquaredScale(mscale.ScaleBase):
 
 
 mscale.register_scale(SquaredScale)
-mscale.register_scale(SquareRootScale)

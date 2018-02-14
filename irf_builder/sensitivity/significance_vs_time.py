@@ -31,14 +31,14 @@ def sigma_vs_time(events, times, energy_range=None, alpha=None, signal_list=("g"
     return sigma_lima(*(S_events[:, None] * times / irf.observation_time).si, alpha)
 
 
-def plot_significance_vs_time(sigmas, times):
+def plot_significance_vs_time(sigmas, times, ref_sigs=None):
     for mode, sigma in sigmas.items():
         plt.loglog(
             times, sigma, marker="s",
             color=irf.plotting.mode_colour_map[mode],
             label=irf.plotting.mode_map[mode])
 
-    for sig in [3, 5]:
+    for sig in (ref_sigs if ref_sigs is not None else [3, 5]):
         plt.plot(times[[0, -1]], [sig, sig], label=f"{sig} sigma",
                  color="gray", alpha=1 - sig / 10, ls="--")
 

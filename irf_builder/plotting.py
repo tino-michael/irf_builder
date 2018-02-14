@@ -2,6 +2,10 @@ import numpy as np
 from astropy import units as u
 from matplotlib import pyplot as plt
 
+import matplotlib.scale as mscale
+import matplotlib.transforms as mtransforms
+import matplotlib.ticker as ticker
+
 
 import irf_builder as irf
 
@@ -137,3 +141,55 @@ def plot_reference():
                ((ref_sens) * (u.erg * u.cm**2 * u.s)**(-1)).to(irf.flux_unit).value,
                marker="s", color="black", ms=3, linewidth=1,
                label="reference")
+
+
+class SquaredScale(mscale.ScaleBase):
+    """
+    ScaleBase class for generating squared scale.
+    shamelessly copied from
+    https://stackoverflow.com/questions/42277989/square-root-scale-using-matplotlib-python?answertab=votes#tab-top
+    """
+    name = 'squared'
+
+    def __init__(self, axis, **kwargs):
+        mscale.ScaleBase.__init__(self)
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(ticker.AutoLocator())
+        axis.set_major_formatter(ticker.ScalarFormatter())
+        axis.set_minor_locator(ticker.NullLocator())
+        axis.set_minor_formatter(ticker.NullFormatter())
+
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        return vmin, vmax
+
+    # def get_transform(self):
+    #     return self.InvertedSquareRootTransform()
+    class SquareTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform_non_affine(self, a):
+            return np.array(a)**2
+
+        def inverted(self):
+            return SquaredScale.InvertedSquareTransform()
+
+    class InvertedSquareTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform(self, a):
+            return np.array(a)**.5
+
+        def inverted(self):
+            return SquaredScale.SquareTransform()
+
+    def get_transform(self):
+        return self.SquareTransform()
+
+
+mscale.register_scale(SquaredScale)
+mscale.register_scale(SquareRootScale)

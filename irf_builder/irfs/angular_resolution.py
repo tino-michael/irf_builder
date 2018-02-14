@@ -5,11 +5,11 @@ import irf_builder as irf
 
 
 def get_theta_square(events, bin_edges=None):
-    bin_edges = bin_edges or np.linspace(0, .1, 50)
+    bin_edges = bin_edges or np.linspace(0., 0.5**2, 70)**.5
     theta_square = {}
     for channel in events:
         theta_square[channel] = np.histogram(
-            events[channel][irf.offset_angle_name]**2,
+            events[channel][irf.offset_angle_name],
             weights=events[channel]["weight"],
             bins=bin_edges)[0]
     return theta_square, bin_edges
@@ -20,8 +20,9 @@ def plot_theta_square(theta_square, bin_edges):
         plt.bar(bin_edges[:-1], theta_square[channel], width=np.diff(bin_edges),
                 align='edge', color=irf.plotting.channel_colour_map[channel],
                 label=irf.plotting.channel_map[channel], alpha=.3)
-    plt.xlabel(r"$\Theta^2 / {}^{\circ^2}$")
+    plt.xlabel(r"$\Theta / {}^{\circ}$")
     plt.ylabel("event counts")
+    plt.gca().set_xscale('squared')
     plt.gca().set_xlim(bin_edges[[0, -1]])
 
     import matplotlib.ticker
@@ -32,7 +33,7 @@ def plot_theta_square(theta_square, bin_edges):
     plt.subplots_adjust(top=0.935, bottom=0.151,
                         left=0.137, right=0.948,
                         hspace=0.2, wspace=0.4)
-    plt.legend()
+    plt.legend(loc='upper right')
 
 
 def percentiles(values, bin_values, bin_edges, percentile):

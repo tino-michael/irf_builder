@@ -2,15 +2,11 @@ import irf_builder as irf
 
 import pandas as pd
 
+sensitivities = {}
 distributions = {}
 e_binned_cuts = {}
 energy_matrix = {}
-
-a_other_stuff = [
-    "th_sq",
-    "false_p_rate",
-    "true_p_rate"
-]
+a_other_stuff = {}
 
 
 def stringify(val, locals):
@@ -54,6 +50,14 @@ def tuplefy(val, locals):
     return (stringify(val, locals), val)
 
 
+def add_sens(sens, *args):
+    '''Sets the sensitivity variable in `irf.writer`.
+    This is here to not confuse users with inconsistent approach compared to other
+    containers, e.g. `distributions`, which are nested deeper.
+    '''
+    irf.writer.sensitivities = sens
+
+
 def add_dist(val, locals):
     '''Enters `val` into the distributions dictionary in the `irf.writer` namespace'''
     irf.writer.distributions.update(dict([tuplefy(val, locals)]))
@@ -69,6 +73,11 @@ def add_matr(val, locals):
     irf.writer.energy_matrix.update(dict([tuplefy(val, locals)]))
 
 
+def add_stuff(val, locals):
+    '''Enters `val` into the a_other_stuff dictionary in the `irf.writer` namespace'''
+    irf.writer.a_other_stuff.update(dict([tuplefy(val, locals)]))
+
+
 def write_irfs(
         outfile_path,
         sensitivities=None, distributions=None, e_binned_cuts=None, energy_matrix=None):
@@ -76,7 +85,7 @@ def write_irfs(
     '''
     import irf_builder as irf  # ??? write_irfs forgets about the import at top of file?
 
-    sensitivities = sensitivities or {}
+    sensitivities = sensitivities or irf.writer.sensitivities
     distributions = distributions or irf.writer.distributions
     e_binned_cuts = e_binned_cuts or irf.writer.e_binned_cuts
     energy_matrix = energy_matrix or irf.writer.energy_matrix
@@ -84,7 +93,7 @@ def write_irfs(
     # the pandas DataFrame to collect all the distributions
     # initialise already containing the energy bin-centres
     irf_frame = pd.DataFrame(irf.e_bin_centres[:, None],
-                             columns=["Energy Centres / TeV"])
+                             columns=["Energy_Centres"])
 
     # the energy-binned sensitivity
     # three distribution per `mode`:
@@ -109,5 +118,14 @@ def write_irfs(
         for mode in cut:
             irf_frame['_'.join([cut_name, mode])] = cut[mode]
 
-    # print(irf_frame)
-    # outfile = pd.HDFStore(outfile_path)
+    outfile = pd.HDFStore(outfile_path)
+    outfile.put('distributions', irf_frame, format='table', data_columns=True)
+
+    for name, dists in energy_matrix.items():
+        for mode, dist in dists.items():
+            for ch, di in dist.items():
+                energy_frame = pd.DataFrame(di)
+                outfile.put(f'energy_matrix/{"_".join([name, ch, mode])}',
+                            energy_frame, format='table')
+
+    outfile.close()

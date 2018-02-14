@@ -40,9 +40,12 @@ parser.add_argument('--infile', type=str, default="classified_events",
 parser.add_argument('--meta_file', type=str, default="meta_data.yml",
                     help="name of the config file that contains information\n"
                          "(energy range, number of processed files etc.)")
+parser.add_argument('-k', type=int, default=1, help="order of spline interpolation")
 parser.add_argument('--r_scale', type=float, default=5.,
                     help="scale by which to increase radius of the off-region")
-parser.add_argument('-k', type=int, default=1, help="order of spline interpolation")
+parser.add_argument('--n_draws', type=int, default=10,
+                    help="number of Poisson draws during the sensitivity calculation "
+                         "to estimate the statistical uncertainties")
 parser.add_argument('--modes', type=str, nargs='*', default=["wave", "tail"],
                     help="list of data processing modes")
 parser.add_argument('--write_irfs', default=False, action='store_true',
@@ -78,13 +81,13 @@ show_plots_group.add_argument('--plot_classification', default=False, action='st
                               help="display plots related to event classification "
                                    "on screen")
 
-store_plots_group = parser.add_argument_group()
-store_plots_group.add_argument('--store_plots', default=False, action='store_true',
+write_plots_group = parser.add_argument_group()
+write_plots_group.add_argument('--write_plots', default=False, action='store_true',
                                help="write plots to disk in a list of file formats")
-store_plots_group.add_argument('--picture_formats', type=str, nargs='*',
+write_plots_group.add_argument('--picture_formats', type=str, nargs='*',
                                default=["pdf", "png", "tex"],
                                help="list of file formats to write plots out as")
-store_plots_group.add_argument('--plots_outdir', type=str, default='plots',
+write_plots_group.add_argument('--plots_outdir', type=str, default='plots',
                                help="directory to write the created plots into")
 
 args = parser.parse_args()
@@ -185,7 +188,7 @@ for mode in cut_energies:
         plt.subplots_adjust(top=0.91, bottom=0.148,
                             left=0.077, right=0.981,
                             hspace=0.2, wspace=0.204)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/cut_values_{mode}")
         plt.pause(.1)
 
@@ -228,20 +231,23 @@ for mode in args.modes:
     energy_resolution[mode] = irf.irfs.energy.get_energy_resolution(cut_events[mode])
     energy_bias[mode] = irf.irfs.energy.get_energy_bias(cut_events[mode])
     irf.irfs.energy.correct_energy_bias(cut_events[mode], energy_bias[mode]['g'])
-
+irf.writer.add_dist(energy_resolution, locals())
+irf.writer.add_dist(energy_bias, locals())
 
 # energy-integrated significance as a function of observation time
 sigmas = {}
 obs_test_times = np.logspace(-2, 5, 10) * u.s
 for mode, events in cut_events.items():
     sigmas[mode] = irf.sensitivity.sigma_vs_time(events, obs_test_times)
-
+irf.writer.add_stuff(sigmas, locals())
 
 # finally, calculate the sensitivity
 sensitivities = {}
 for mode, events in cut_events.items():
     sensitivities[mode] = irf.calculate_sensitivity(
-        events, irf.e_bin_edges, alpha=irf.alpha, n_draws=500)
+        events, irf.e_bin_edges, alpha=irf.alpha, n_draws=args.n_draws)
+irf.writer.add_sens(sensitivities)
+
 
 # ########  ##        #######  ########  ######
 # ##     ## ##       ##     ##    ##    ##    ##
@@ -253,36 +259,39 @@ for mode, events in cut_events.items():
 args.modes = ['wave']
 if args.plot_energy or args.plot_all:
     energy_matrix, rel_delta_e_reco, rel_delta_e_mc = {}, {}, {}
+    irf.writer.add_matr(energy_matrix, locals())
+    irf.writer.add_matr(rel_delta_e_reco, locals())
+    irf.writer.add_matr(rel_delta_e_mc, locals())
     for mode in args.modes:
         plt.figure(figsize=(10, 5))
         energy_matrix[mode] = \
             irf.irfs.energy.get_energy_migration_matrix(cut_events[mode])
         irf.plotting.plot_energy_migration_matrix(energy_matrix[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_migration_{mode}")
 
         plt.figure(figsize=(10, 5))
         rel_delta_e_reco[mode], xlabel, ylabel = \
             irf.irfs.energy.get_rel_delta_e(cut_events[mode])
         irf.plotting.plot_rel_delta_e(rel_delta_e_reco[mode], xlabel, ylabel)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_relative_error_reco_{mode}")
 
         plt.figure(figsize=(10, 5))
         rel_delta_e_mc[mode], xlabel, ylabel = \
             irf.irfs.energy.get_rel_delta_e(cut_events[mode], ref_energy="mc")
         irf.plotting.plot_rel_delta_e(rel_delta_e_mc[mode], xlabel, ylabel)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_relative_error_mc_{mode}")
 
         plt.figure()
         irf.plotting.plot_energy_resolution(energy_resolution[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_resolution_{mode}")
 
         plt.figure()
         irf.plotting.plot_energy_bias(energy_bias[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_bias_{mode}")
 
         plt.figure()
@@ -298,35 +307,40 @@ if args.plot_energy or args.plot_all:
 
 if args.plot_rates or args.plot_all:
     energy_fluxes, energy_rates = {}, {}
+    irf.writer.add_dist(energy_fluxes, locals())
+    irf.writer.add_dist(energy_rates, locals())
     for mode in args.modes:
         plt.figure()
         energy_fluxes[mode], xlabel = irf.irfs.event_rates.get_energy_event_fluxes(
             cut_events[mode], th_cuts[mode])
         irf.plotting.plot_energy_event_fluxes(energy_fluxes[mode], xlabel=xlabel)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/fluxes_{mode}")
 
         plt.figure()
         energy_rates[mode], xlabel = \
             irf.irfs.event_rates.get_energy_event_rates(cut_events[mode])
         irf.plotting.plot_energy_event_rates(energy_rates[mode], xlabel=xlabel)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/event_rates_{mode}")
 
 
 if args.plot_selection or args.plot_all:
     eff_areas, selec_effs, selec_events = {}, {}, {}
+    irf.writer.add_dist(eff_areas, locals())
+    irf.writer.add_dist(selec_effs, locals())
+    irf.writer.add_dist(selec_events, locals())
     generator_energies = {}
     for mode in args.modes:
         eff_areas[mode], selec_effs[mode], selec_events[mode] = \
             irf.irfs.get_effective_areas(cut_events[mode])
         plt.figure()
         irf.plotting.plot_effective_areas(eff_areas[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/effective_areas_{mode}")
         plt.figure()
         irf.plotting.plot_selection_efficiencies(selec_effs[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/selection_efficiencies_{mode}")
 
         plt.figure()
@@ -343,24 +357,26 @@ if args.plot_selection or args.plot_all:
 
 if args.plot_ang_res or args.plot_all:
     th_sq, xi = {}, {}
+    irf.writer.add_stuff(th_sq, locals())
+    irf.writer.add_dist(xi, locals())
     for mode in args.modes:
         plt.figure()
         th_sq[mode], bin_e = \
             irf.irfs.angular_resolution.get_theta_square(cut_events[mode])
         irf.plotting.plot_theta_square(th_sq[mode], bin_e)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/theta_square_{mode}")
 
         plt.figure()
         xi[mode], xlabel = \
             irf.irfs.angular_resolution.get_angular_resolution(gamma_events[mode])
         irf.plotting.plot_angular_resolution(xi[mode], xlabel)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/angular_resolution_{mode}")
 
         plt.figure()
         irf.plotting.plot_angular_resolution_violin(gamma_events[mode])
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/angular_violins_{mode}")
 
 
@@ -369,28 +385,30 @@ if args.plot_sensitivity or args.plot_all:
     irf.plotting.plot_crab()
     irf.plotting.plot_reference()
     irf.plotting.plot_sensitivity(sensitivities)
-    if args.store_plots:
+    if args.write_plots:
         save_fig(f"{args.plots_outdir}/sensitivity")
 
     plt.figure()
     irf.plotting.plot_significance_vs_time(sigmas, obs_test_times)
-    if args.store_plots:
+    if args.write_plots:
         save_fig(f"{args.plots_outdir}/significance_vs_time")
 
 
 if args.plot_classification or args.plot_all:
     false_p_rate, true_p_rate = {}, {}
+    irf.writer.add_stuff(false_p_rate, locals())
+    irf.writer.add_stuff(true_p_rate, locals())
     for mode in args.modes:
         plt.figure()
         false_p_rate[mode], true_p_rate[mode], roc_area_under_curve = \
             irf.irfs.classification.get_roc_curve(all_events[mode])
         irf.plotting.plot_roc_curve(false_p_rate[mode], true_p_rate[mode],
                                     roc_area_under_curve)
-        if args.store_plots:
+        if args.write_plots:
             save_fig(f"{args.plots_outdir}/ROC_curve_{mode}")
 
 
 if args.write_irfs:
-    irf.writer.write_irfs("foo.h5", sensitivities=sensitivities)
+    irf.writer.write_irfs(f"foo.h5")
 
 plt.show()

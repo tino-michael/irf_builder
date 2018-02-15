@@ -356,14 +356,12 @@ if args.plot_selection or args.plot_all:
 
 
 if args.plot_ang_res or args.plot_all:
-    th_sq, xi = {}, {}
-    irf.writer.add_stuff(th_sq, locals())
-    irf.writer.add_dist(xi, locals())
+    theta, xi = {}, {}
     for mode in args.modes:
         plt.figure()
-        th_sq[mode], bin_e = \
+        theta[mode], theta_bins = \
             irf.irfs.angular_resolution.get_theta_square(cut_events[mode])
-        irf.plotting.plot_theta_square(th_sq[mode], bin_e)
+        irf.plotting.plot_theta_square(theta[mode], theta_bins)
         if args.write_plots:
             save_fig(f"{args.plots_outdir}/theta_square_{mode}")
 
@@ -378,6 +376,9 @@ if args.plot_ang_res or args.plot_all:
         irf.plotting.plot_angular_resolution_violin(gamma_events[mode])
         if args.write_plots:
             save_fig(f"{args.plots_outdir}/angular_violins_{mode}")
+    irf.writer.add_dist(xi, locals())
+    irf.writer.add_stuff(theta, locals())
+    irf.writer.add_stuff(theta_bins, locals())
 
 
 if args.plot_sensitivity or args.plot_all:
@@ -408,6 +409,7 @@ if args.plot_classification or args.plot_all:
             save_fig(f"{args.plots_outdir}/ROC_curve_{mode}")
 
 
+# if desired, put all constructed distributions into an h5 file
 if args.write_irfs:
     irf.writer.write_irfs(f"foo.h5")
 

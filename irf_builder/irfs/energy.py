@@ -22,9 +22,17 @@ def get_energy_migration_matrix(events):
     return energy_matrix
 
 
-def plot_energy_migration_matrix(energy_matrix, fig=None):
-    if fig is None:
-        fig = plt.gcf()
+def plot_energy_migration_matrix(energy_matrix):
+    """Takes the 2D reco-vs-sim energy distributions and plots them next to each other
+    in a matplotlib figure.
+
+    Parameters
+    ----------
+    energy_matrix : dict of 2D arrays
+        dictionary of the 2D reco-vs-sim energy distributions;
+        basically, the output of the `get_energy_migration_matrix` function
+
+    """
     for i, (ch, e_matrix) in enumerate(energy_matrix.items()):
         ax = fig.add_subplot(131 + i)
 
@@ -45,14 +53,35 @@ def plot_energy_migration_matrix(energy_matrix, fig=None):
 
 
 def get_rel_delta_e(events, ref_energy="reco"):
+    """Creates 2D distributions of the relative differences of the reconstructed an
+    simulated energies as a function of either one.
+
+    Parameters
+    ----------
+    events : dict of tables
+        dictionary of the reconstructed events
+    ref_energy : string ["reco" | "mc"], default: "reco"
+        reference energy to use as the divider of ΔE and as the axis of abscissa
+
+    Returns
+    -------
+    rel_delta_e : dict of 2D arrays
+        dictionary of the computed distributions
+    xlabel, ylabel : strings
+        labels for the abscissa and ordinate ("x- and y-axis") depending on the used
+        reference energy
+
+    """
     ref_energy_name = irf.energy_names[ref_energy]
     rel_delta_e = {}
     for ch in events:
         counts, _, _ = np.histogram2d(
             events[ch][ref_energy_name],
-            (events[ch][irf.energy_names["reco"]] - events[ch][irf.energy_names["mc"]]) /
-            events[ch][ref_energy_name],
-            bins=(irf.e_bin_edges_fine, np.linspace(-1, 1, 100)))
+            (events[ch][irf.energy_names["reco"]] -
+             events[ch][irf.energy_names["mc"]]) / events[ch][ref_energy_name],
+            bins=(irf.e_bin_edges_fine,
+                  np.linspace(-1, 1, 100)))
+
         rel_delta_e[ch] = counts
 
     if ref_energy == "reco":
@@ -65,9 +94,20 @@ def get_rel_delta_e(events, ref_energy="reco"):
     return rel_delta_e, xlabel, ylabel
 
 
-def plot_rel_delta_e(rel_delta_e, xlabel=None, ylabel=None, fig=None):
-    if fig is None:
-        fig = plt.gcf()
+def plot_rel_delta_e(rel_delta_e, xlabel, ylabel):
+    """Plots the relative energy reconstruction error (output of `get_rel_delta_e`).
+
+    Parameters
+    ----------
+    rel_delta_e, xlabel, ylabel : the output of `get_rel_delta_e`
+        the output of `get_rel_delta_e`
+
+    Note
+    ----
+    TODO unify plot_rel_delta_e and plot_energy_migration_matrix plotting functions... \
+        they do essentially the same thing
+
+    """
     for i, ch in enumerate(rel_delta_e):
         ax = fig.add_subplot(131 + i)
         ax.pcolormesh(irf.e_bin_edges_fine / irf.energy_unit,
@@ -86,6 +126,19 @@ def plot_rel_delta_e(rel_delta_e, xlabel=None, ylabel=None, fig=None):
 
 
 def get_energy_bias(events):
+    """Calculates the average energy error in each energy bin
+
+    Parameters
+    ----------
+    events : dict of tables
+        dictionary of the reconstructed events
+
+    Returns
+    -------
+    energy_bias : dict of 1D arrays
+        dictionary of the energy biases
+
+    """
     energy_bias = {}
     for ch, e in events.items():
         median_bias = np.zeros_like(irf.e_bin_centres.value)
@@ -106,6 +159,17 @@ def get_energy_bias(events):
 
 
 def plot_energy_bias(energy_bias, channels=None):
+    """Plots the energy bias distributions created in `get_energy_bias`
+
+    Parameters
+    ----------
+    energy_bias : dict of 1D arrays
+        dictionary the distributions to be plotted
+    channels : iterable of strings, optional (default: ['g'])
+        list of the channels to be plotted.
+        you are probably not interested in plotting the bias of electrons / protons,
+        so single out the desired channel here.
+    """
 
     channels = channels or ['g']
     irf.plotting.plot_channels_lines(
@@ -121,6 +185,24 @@ def plot_energy_bias(energy_bias, channels=None):
 
 
 def correct_energy_bias(events, energy_bias, k=1):
+    """The energy bias is a systematic offset of the average energy. If this offset is
+    known -- e.g. from simulations -- it can be corrected.
+
+    Parameters
+    ----------
+    events : dict of tables
+        dictionary of the reconstructed events
+    energy_bias : 1D array
+        the energy-dependent offset of the average energies
+    k : int, optional (default: 1)
+        order of the spline interpolation of the data points in `energy_bias`
+
+    Returns
+    -------
+    events : dict of tables
+        dictionary of the reconstructed events with their reconstructed energy corrected
+
+    """
     from scipy import interpolate
 
     spline = interpolate.splrep(irf.e_bin_centres.value, energy_bias, k=k)
@@ -132,15 +214,32 @@ def correct_energy_bias(events, energy_bias, k=1):
 
 
 def get_energy_resolution(events, ref_energy="reco", percentile=68):
+    """Determine the energy resolution as the XXth percentile containment of the absolute
+    relative energy error -- i.e. | ΔE / E |
+
+    Parameters
+    ----------
+    events : dict of tables
+        dictionary of the reconstructed events
+    ref_energy : string ["reco" | "mc"], default: "reco"
+        reference energy to use as the divider of ΔE and as the axis of abscissa
+    percentile : int, optional (default: 68)
+        the desired containment percentile
+
+    Returns
+    -------
+    energy_resolution : dict of 1D arrays
+        dictionary of the determined energy resolutions
+
+    """
     ref_energy_name = irf.energy_names[ref_energy]
     energy_resolution = {}
     for ch, e in events.items():
         resolution = np.zeros_like(irf.e_bin_centres.value)
+        rel_error = np.abs(e[irf.energy_names["mc"]] -
+                           e[irf.energy_names["reco"]]) / e[ref_energy_name]
         for i, (e_low, e_high) in enumerate(zip(irf.e_bin_edges[:-1] / irf.energy_unit,
                                                 irf.e_bin_edges[1:] / irf.energy_unit)):
-            rel_error = np.abs(e[irf.energy_names["mc"]] -
-                               e[irf.energy_names["reco"]]) / e[ref_energy_name]
-
             try:
                 resolution[i] = np.percentile(
                     rel_error[(e[ref_energy_name] > e_low) &
@@ -154,6 +253,8 @@ def get_energy_resolution(events, ref_energy="reco", percentile=68):
 
 
 def plot_energy_resolution(energy_resolution, channels=None):
+    """Plot the energy-dependent energy resolutions as lines.
+    """
 
     channels = channels or ['g']
     irf.plotting.plot_channels_lines(

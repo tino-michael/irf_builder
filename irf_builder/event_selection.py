@@ -37,7 +37,8 @@ def cut_and_sensitivity(cuts, events, bin_edges,
         return 1
 
 
-def minimise_sensitivity_per_bin(events, bin_edges=None):
+def minimise_sensitivity_per_bin(events, bin_edges=None,
+                                 syst_nsim=False, syst_nphy=False):
 
     bin_edges = bin_edges or irf.e_bin_edges
 
@@ -58,6 +59,7 @@ def minimise_sensitivity_per_bin(events, bin_edges=None):
             args=(cut_events,
                   np.array([elow / irf.energy_unit,
                             ehigh / irf.energy_unit]) * irf.energy_unit,
+                  syst_nsim, syst_nphy
                   )
         )
 

@@ -15,10 +15,7 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 import irf_builder as irf
-from irf_builder import RegionScaler
 from irf_builder.plotting import save_fig
-
-import irf_builder.writer as writer
 
 
 def correct_off_angle(data, origin=None):
@@ -92,7 +89,7 @@ write_plots_group.add_argument('--plots_outdir', type=str, default='plots',
 
 args = parser.parse_args()
 
-RegionScaler().r_scale = args.r_scale
+irf.RegionScaler().r_scale = args.r_scale
 irf.plotting.file_formats = args.picture_formats
 
 # reading the meta data that describes the MC production

@@ -11,6 +11,7 @@ def load_meta_data_from_yml(meta_data_file):
 
     # add a field for number of simulated events
     for meta in [meta_data["gamma"], meta_data["proton"], meta_data["electron"]]:
-        meta["n_simulated"] = meta["n_files"] * meta["n_events_per_file"]
+        if "n_simulated" not in meta:
+            meta["n_simulated"] = meta["n_files"] * meta["n_events_per_file"]
 
     return meta_data

@@ -9,19 +9,19 @@ different manifestations of a sensitivity.
 
 ## TODO
 - [ ] doc-strings in many functions
-    - [ ] \__init__.py
+    - [ ] \_\_init__.py
     - [ ] plotting.py
     - [ ] event_selection.py
     - [ ] spectra.py
     - [ ] sensitivity/li_ma.py
-    - [ ] sensitivity/\__init__.py
+    - [ ] sensitivity/\_\_init__.py
     - [ ] sensitivity/discovery_flux_vs_time.py
     - [ ] sensitivity/differential_energy_point_source_sensitivity.py
     - [ ] sensitivity/significance_vs_time.py
     - [ ] weighting.py
     - [ ] meta_data_loader.py
     - [ ] writer.py
-    - [ ] irfs/\__init__.py
+    - [ ] irfs/\_\_init__.py
     - [ ] irfs/angular_resolution.py
     - [ ] irfs/event_rates.py
     - [ ] irfs/effective_areas.py

@@ -4,6 +4,8 @@ from astropy.units.core import UnitTypeError
 
 import scipy.integrate as integrate
 
+import irf_builder as irf
+
 from gammapy.spectrum.cosmic_ray import cosmic_ray_flux
 from gammapy.spectrum.crab import CrabSpectrum
 
@@ -80,7 +82,7 @@ def make_mock_event_rate(spectrum, bin_edges, log_e=False, norm=None):
             return spectrum(e).value
         except UnitTypeError:
             # in case `spectrum` function insists on unified energy
-            return spectrum(e * u.TeV).value
+            return spectrum(e * irf.energy_unit).value
 
     rates = []
     if log_e:

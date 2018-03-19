@@ -34,7 +34,7 @@ def plot_energy_migration_matrix(energy_matrix):
 
     """
     for i, (ch, e_matrix) in enumerate(energy_matrix.items()):
-        ax = fig.add_subplot(131 + i)
+        ax = plt.gcf().add_subplot(131 + i)
 
         ax.pcolormesh(irf.e_bin_edges_fine.value,
                       irf.e_bin_edges_fine.value, e_matrix)
@@ -109,7 +109,7 @@ def plot_rel_delta_e(rel_delta_e, xlabel, ylabel):
 
     """
     for i, ch in enumerate(rel_delta_e):
-        ax = fig.add_subplot(131 + i)
+        ax = plt.gcf().add_subplot(131 + i)
         ax.pcolormesh(irf.e_bin_edges_fine / irf.energy_unit,
                       np.linspace(-1, 1, 100),
                       rel_delta_e[ch].T)
@@ -185,7 +185,7 @@ def plot_energy_bias(energy_bias, channels=None):
 
 
 def correct_energy_bias(events, energy_bias, k=1):
-    """The energy bias is a systematic offset of the average energy. If this offset is
+    """The energy bias is a systematic offset of the median energy. If this offset is
     known -- e.g. from simulations -- it can be corrected.
 
     Parameters
@@ -193,7 +193,8 @@ def correct_energy_bias(events, energy_bias, k=1):
     events : dict of tables
         dictionary of the reconstructed events
     energy_bias : 1D array
-        the energy-dependent offset of the average energies
+        the energy-dependent offset of the median energies as a function of
+        reconstructed energy
     k : int, optional (default: 1)
         order of the spline interpolation of the data points in `energy_bias`
 
@@ -249,17 +250,24 @@ def get_energy_resolution(events, ref_energy="reco", percentile=68):
                 pass
         energy_resolution[ch] = resolution
 
-    return energy_resolution
+    if ref_energy == "reco":
+        xlabel = r"$E_\mathrm{reco}$ / TeV"
+        ylabel = r"$(E_\mathrm{reco} - E_\mathrm{MC}) / E_\mathrm{reco}$"
+    else:
+        xlabel = r"$E_\mathrm{MC}$ / TeV"
+        ylabel = r"$(E_\mathrm{reco} - E_\mathrm{MC}) / E_\mathrm{MC}$"
+
+    return energy_resolution, xlabel, ylabel
 
 
-def plot_energy_resolution(energy_resolution, channels=None):
+def plot_energy_resolution(energy_resolution, xlabel, ylabel, channels=None):
     """Plot the energy-dependent energy resolutions as lines.
     """
 
     channels = channels or ['g']
     irf.plotting.plot_channels_lines(
         data=dict((ch, energy_resolution[ch]) for ch in channels),
-        ylabel=r"$(|E_\mathrm{reco} - E_\mathrm{MC}|)_{68}/E_\mathrm{reco}$",
+        xlabel=xlabel, ylabel=ylabel,
         title="Energy Resolution"
     )
     plt.gca().set_yscale("linear")

@@ -18,14 +18,14 @@ import irf_builder as irf
 from irf_builder.plotting import save_fig
 
 
-def correct_off_angle(data, origin=None):
-    import ctapipe.utils.linalg as linalg
-    origin = origin or linalg.set_phi_theta(90 * u.deg, 20 * u.deg)
-
-    reco_dirs = linalg.set_phi_theta(data["phi"] * u.deg.to(u.rad),
-                                     data["theta"] * u.deg.to(u.rad)).T
-    off_angles = np.arccos(np.clip(np.dot(reco_dirs, origin), -1., 1.)) * u.rad
-    data["off_angle"] = off_angles.to(u.deg)
+# def correct_off_angle(data, origin=None):
+#     import ctapipe.utils.linalg as linalg
+#     origin = origin or linalg.set_phi_theta(90 * u.deg, 20 * u.deg)
+# 
+#     reco_dirs = linalg.set_phi_theta(data["phi"] * u.deg.to(u.rad),
+#                                      data["theta"] * u.deg.to(u.rad)).T
+#     off_angles = np.arccos(np.clip(np.dot(reco_dirs, origin), -1., 1.)) * u.rad
+#     data["off_angle"] = off_angles.to(u.deg)
 
 
 parser = argparse.ArgumentParser(description='')
@@ -109,12 +109,12 @@ for mode in args.modes:
                                            these_events["gammaness"]]
 
 # FUCK FUCK FUCK FUCK
-irf.reco_error_name = "off_angle"
-try:
-    for c in irf.plotting.channel_map:
-        correct_off_angle(all_events["wave"][c])
-except KeyError:
-    pass
+# irf.reco_error_name = "off_angle"
+# try:
+#     for c in irf.plotting.channel_map:
+#         correct_off_angle(all_events["wave"][c])
+# except KeyError:
+#     pass
 
 
 # adding a "weight" column to the data tables
@@ -211,9 +211,9 @@ for mode, events in all_events.items():
 
 
 # printing selected number events and summed weights
-for step, evs in {"reco": all_events,
-                  "gammaness": gamma_events,
-                  "theta": cut_events}.items():
+for step, evs in (("reco", all_events),
+                  ("gammaness", gamma_events),
+                  ("theta", cut_events)):
     print(f"\nselected MC events at step {step}:")
     for ch, ev in evs["wave"].items():
         print(f"{ch}: {len(ev)}")
@@ -225,7 +225,8 @@ for step, evs in {"reco": all_events,
 # measure and correct for the energy bias
 energy_resolution, energy_bias = {}, {}
 for mode in args.modes:
-    energy_resolution[mode] = irf.irfs.energy.get_energy_resolution(cut_events[mode])
+    energy_resolution[mode], xlabel_e_res, ylabel_e_res = \
+        irf.irfs.energy.get_energy_resolution(cut_events[mode])
     energy_bias[mode] = irf.irfs.energy.get_energy_bias(cut_events[mode])
     irf.irfs.energy.correct_energy_bias(cut_events[mode], energy_bias[mode]['g'])
 irf.writer.add_dist(energy_resolution, locals())
@@ -282,12 +283,14 @@ if args.plot_energy or args.plot_all:
             save_fig(f"{args.plots_outdir}/energy_relative_error_mc_{mode}")
 
         plt.figure()
-        irf.plotting.plot_energy_resolution(energy_resolution[mode])
+        irf.plotting.plot_energy_resolution(
+            energy_resolution[mode], xlabel_e_res, ylabel_e_res)
         if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_resolution_{mode}")
 
         plt.figure()
         irf.plotting.plot_energy_bias(energy_bias[mode])
+        plt.gca().set_ylim((0, 0.2))  # BUG? matplotlib2tikz does not like neg. axes
         if args.write_plots:
             save_fig(f"{args.plots_outdir}/energy_bias_{mode}")
 
@@ -295,11 +298,16 @@ if args.plot_energy or args.plot_all:
         energy_bias_2 = irf.irfs.energy.get_energy_bias(cut_events[mode])
         irf.plotting.plot_energy_bias(energy_bias_2)
         plt.title("Energy Bias (post e-bias correction)")
+        plt.gca().set_ylim((0, 0.2))  # BUG? matplotlib2tikz does not like neg. axes
+        if args.write_plots:
+            save_fig(f"{args.plots_outdir}/energy_bias_corrected_{mode}")
 
         plt.figure()
         energy_resolution2 = irf.irfs.energy.get_energy_resolution(cut_events[mode])
-        irf.plotting.plot_energy_resolution(energy_resolution2)
+        irf.plotting.plot_energy_resolution(*energy_resolution2)
         plt.title("Energy Resolution (post e-bias correction)")
+        if args.write_plots:
+            save_fig(f"{args.plots_outdir}/energy_resolution_corrected_{mode}")
 
 
 if args.plot_rates or args.plot_all:

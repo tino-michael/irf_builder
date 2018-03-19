@@ -18,14 +18,14 @@ import irf_builder as irf
 from irf_builder.plotting import save_fig
 
 
-def correct_off_angle(data, origin=None):
-    import ctapipe.utils.linalg as linalg
-    origin = origin or linalg.set_phi_theta(90 * u.deg, 20 * u.deg)
-
-    reco_dirs = linalg.set_phi_theta(data["phi"] * u.deg.to(u.rad),
-                                     data["theta"] * u.deg.to(u.rad)).T
-    off_angles = np.arccos(np.clip(np.dot(reco_dirs, origin), -1., 1.)) * u.rad
-    data["off_angle"] = off_angles.to(u.deg)
+# def correct_off_angle(data, origin=None):
+#     import ctapipe.utils.linalg as linalg
+#     origin = origin or linalg.set_phi_theta(90 * u.deg, 20 * u.deg)
+#
+#     reco_dirs = linalg.set_phi_theta(data["phi"] * u.deg.to(u.rad),
+#                                      data["theta"] * u.deg.to(u.rad)).T
+#     off_angles = np.arccos(np.clip(np.dot(reco_dirs, origin), -1., 1.)) * u.rad
+#     data["off_angle"] = off_angles.to(u.deg)
 
 
 parser = argparse.ArgumentParser(description='')
@@ -109,12 +109,12 @@ for mode in args.modes:
                                            these_events["gammaness"]]
 
 # FUCK FUCK FUCK FUCK
-irf.reco_error_name = "off_angle"
-try:
-    for c in irf.plotting.channel_map:
-        correct_off_angle(all_events["wave"][c])
-except KeyError:
-    pass
+# irf.reco_error_name = "off_angle"
+# try:
+#     for c in irf.plotting.channel_map:
+#         correct_off_angle(all_events["wave"][c])
+# except KeyError:
+#     pass
 
 
 # adding a "weight" column to the data tables

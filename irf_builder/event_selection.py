@@ -4,7 +4,7 @@ from scipy import optimize
 import irf_builder as irf
 
 
-def cut_and_sensitivity(cuts, events, bin_edges,
+def cut_and_sensitivity(cuts, events, bin_edges, n_draws=10,
                         syst_nsim=False, syst_nphy=False):
     """ throw this into a minimiser """
     ga_cut = cuts[0]
@@ -29,7 +29,7 @@ def cut_and_sensitivity(cuts, events, bin_edges,
         return 1
 
     sensitivities = irf.calculate_sensitivity(
-        cut_events, bin_edges, alpha=irf.alpha, n_draws=10)
+        cut_events, bin_edges, alpha=irf.alpha, n_draws=n_draws)
 
     try:
         return sensitivities["Sensitivity"][0]
@@ -37,10 +37,10 @@ def cut_and_sensitivity(cuts, events, bin_edges,
         return 1
 
 
-def minimise_sensitivity_per_bin(events, bin_edges=None,
+def minimise_sensitivity_per_bin(events, n_draws=10,
                                  syst_nsim=False, syst_nphy=False):
 
-    bin_edges = bin_edges or irf.e_bin_edges
+    bin_edges = irf.e_bin_edges
 
     cut_energies, ga_cuts, th_cuts = [], [], []
     for elow, ehigh, emid in zip(bin_edges[:-1], bin_edges[1:],
@@ -59,7 +59,7 @@ def minimise_sensitivity_per_bin(events, bin_edges=None,
             args=(cut_events,
                   np.array([elow / irf.energy_unit,
                             ehigh / irf.energy_unit]) * irf.energy_unit,
-                  syst_nsim, syst_nphy
+                  n_draws, syst_nsim, syst_nphy
                   )
         )
 

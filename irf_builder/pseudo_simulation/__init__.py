@@ -1,3 +1,5 @@
+import numpy as np
+
 from scipy import interpolate
 
 import irf_builder as irf
@@ -23,7 +25,16 @@ def draw_from_distribution(dist, abscis, n_draws=100, k=1):
         array of samples randomly drawn from the provided distribution
 
     """
-    cdf = np.cumsum(dist)
+    cdf = np.cumsum(dist) / np.sum(dist)
+
+    try:
+        unit = abscis.unit
+        abscis = abscis.value
+        cdf = cdf.value
+    except AttributeError:
+        unit = 1
+
     cdfspline = interpolate.splrep(cdf, abscis, k=1)
-    randomx = interpolate.splev(np.random.uniform(*abscis[[0, -1]], n_draws), cdfspline)
-    return randomx
+    randomx = interpolate.splev(np.random.random(n_draws), cdfspline)
+
+    return randomx * unit

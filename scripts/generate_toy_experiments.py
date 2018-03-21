@@ -12,7 +12,7 @@ from scipy import interpolate
 
 import irf_builder as irf
 from irf_builder.spectra import crab_source_rate, cr_background_rate, electron_spectrum
-from irf_builder.pseudo_simulation import draw_from_distribution, temp_get_gammaness
+from irf_builder.pseudo_simulation import draw_from_distribution
 
 
 from matplotlib import pyplot as plt
@@ -40,21 +40,15 @@ irf.meta_data = irf.load_meta_data(f"{args.outdir}/{args.meta_file}")
 
 
 # TODO simulate
-# - xi
-# - off_angle
+# - xi ✔
+# - off_angle ✔
 # - MC Energy ✔ -> reco Energy ✔
 # - gammaness
 
 
-# path, filename = split(args.config)
-# gam_g, gam_p, gam_e = temp_get_gammaness()
-# Table([gam_g, gam_p, gam_e],
-#       names=["gammaness_gamma", "gammaness_proton",
-#              "gammaness_electron"]).write(filename=filename, path=path,
-#                                           format="ascii.latex")
-
 table = Table.read(args.config, format="ascii.latex")
 
+# simulate energy distributions for the three different channels
 mc_ener_gam = draw_from_distribution(crab_source_rate(irf.e_bin_centres_fine),
                                      abscis=irf.e_bin_centres_fine,
                                      n_draws=irf.meta_data["gamma"]["n_simulated"])
@@ -65,13 +59,39 @@ mc_ener_ele = draw_from_distribution(electron_spectrum(irf.e_bin_centres_fine),
                                      abscis=irf.e_bin_centres_fine,
                                      n_draws=irf.meta_data["electron"]["n_simulated"])
 
-en_res_spline = interpolate.splrep(irf.e_bin_edges.value, table["energy_res_gamma"], k=1)
 
+# use an energy-dependent energy resolution from the config file
+en_res_spline = interpolate.splrep(irf.e_bin_edges.value, table["energy_res_gamma"], k=1)
 # gamma reco energy is mc energy smeared by gaussian with std as given in config
 reco_ener_gam = mc_ener_gam * np.random.normal(
     1, interpolate.splev(mc_ener_gam, en_res_spline), len(mc_ener_gam))
 # electron reco energy is mc energy smeared by gaussian with std as gamma
-reco_ener_ele = mc_ener_gam * np.random.normal(
-    1, interpolate.splev(mc_ener_gam, en_res_spline), len(mc_ener_gam))
+reco_ener_ele = mc_ener_ele * np.random.normal(
+    1, interpolate.splev(mc_ener_ele, en_res_spline), len(mc_ener_ele))
 # proton reco energy is flat within the given energy range
-reco_ener_pro = np.random.uniform(irf.e_bin_edges[[0, -1]], size=len(mc_ener_pro))
+reco_ener_pro = np.random.uniform(*irf.e_bin_edges[[0, -1]].value, size=len(mc_ener_pro))
+
+
+# use an energy-dependent direction resolution from the config file
+xi_spline = interpolate.splrep(irf.e_bin_edges.value, table["xi_gamma"], k=1)
+del_x_g, del_y_g = np.random.normal(0, interpolate.splev(mc_ener_gam, xi_spline),
+                                    (2, len(mc_ener_gam)))
+# generate reconstructed proton directions flat within the field of view
+del_x_p, del_y_p = np.random.uniform(low=-3, high=3, size=(2, len(mc_ener_pro)))
+# generate reconstructed electron directions flat within the field of view
+del_x_e, del_y_e = np.random.uniform(low=-3, high=3, size=(2, len(mc_ener_ele)))
+
+# offset angles (i.e. Theta) as the squared sum of the deltas
+off_angle_g = (del_x_g**2 + del_y_g**2)**.5
+off_angle_e = (del_x_e**2 + del_y_e**2)**.5
+off_angle_p = (del_x_p**2 + del_y_p**2)**.5
+
+# electron angular resolution is the same as gammas
+xi_x_e, xi_y_e = np.random.normal(0, interpolate.splev(mc_ener_ele, xi_spline),
+                                  (2, len(mc_ener_ele)))
+# proton angular resolution is five times higher than gammas (just made that up)
+xi_x_p, xi_y_p = np.random.normal(0, interpolate.splev(mc_ener_pro, xi_spline) * 5,
+                                  (2, len(mc_ener_pro)))
+xi_g = off_angle_g
+xi_e = (xi_x_e**2 + xi_y_e**2)**.5
+xi_p = (xi_x_p**2 + xi_y_p**2)**.5

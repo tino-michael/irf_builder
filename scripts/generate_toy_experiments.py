@@ -39,11 +39,15 @@ args = parser.parse_args()
 irf.meta_data = irf.load_meta_data(f"{args.outdir}/{args.meta_file}")
 
 
-# TODO simulate
+# TODO
+# simulate
 # - xi ✔
 # - off_angle ✔
 # - MC Energy ✔ -> reco Energy ✔
-# - gammaness
+# - gammaness ✔
+#
+# add
+# - energy-dependent selection efficiency
 
 
 table = Table.read(args.config, format="ascii.latex")
@@ -82,9 +86,9 @@ del_x_p, del_y_p = np.random.uniform(low=-3, high=3, size=(2, len(mc_ener_pro)))
 del_x_e, del_y_e = np.random.uniform(low=-3, high=3, size=(2, len(mc_ener_ele)))
 
 # offset angles (i.e. Theta) as the squared sum of the deltas
-off_angle_g = (del_x_g**2 + del_y_g**2)**.5
-off_angle_e = (del_x_e**2 + del_y_e**2)**.5
-off_angle_p = (del_x_p**2 + del_y_p**2)**.5
+off_angle_gam = (del_x_g**2 + del_y_g**2)**.5
+off_angle_ele = (del_x_e**2 + del_y_e**2)**.5
+off_angle_pro = (del_x_p**2 + del_y_p**2)**.5
 
 # electron angular resolution is the same as gammas
 xi_x_e, xi_y_e = np.random.normal(0, interpolate.splev(mc_ener_ele, xi_spline),
@@ -92,6 +96,31 @@ xi_x_e, xi_y_e = np.random.normal(0, interpolate.splev(mc_ener_ele, xi_spline),
 # proton angular resolution is five times higher than gammas (just made that up)
 xi_x_p, xi_y_p = np.random.normal(0, interpolate.splev(mc_ener_pro, xi_spline) * 5,
                                   (2, len(mc_ener_pro)))
-xi_g = off_angle_g
-xi_e = (xi_x_e**2 + xi_y_e**2)**.5
-xi_p = (xi_x_p**2 + xi_y_p**2)**.5
+xi_gam = off_angle_gam
+xi_ele = (xi_x_e**2 + xi_y_e**2)**.5
+xi_pro = (xi_x_p**2 + xi_y_p**2)**.5
+
+
+# generate gammaness from the distributions in the config file
+gamman_absc = np.linspace(0, 1, len(table["gammaness_gamma"]))
+gammaness_gam = draw_from_distribution(table["gammaness_gamma"], abscis=gamman_absc,
+                                       n_draws=irf.meta_data["gamma"]["n_simulated"])
+gammaness_pro = draw_from_distribution(table["gammaness_proton"], abscis=gamman_absc,
+                                       n_draws=irf.meta_data["proton"]["n_simulated"])
+gammaness_ele = draw_from_distribution(table["gammaness_electron"], abscis=gamman_absc,
+                                       n_draws=irf.meta_data["electron"]["n_simulated"])
+
+g = Table([mc_ener_gam, reco_ener_gam, off_angle_gam, xi_gam, gammaness_gam],
+          names=["MC_Energy", "reco_Energy", "off_angle", "xi", "gammaness"])
+g.write(f"{args.outdir}/{args.outfile}_gamma.h5", path="/reco_events", format="hdf5",
+        compression=True)
+
+p = Table([mc_ener_pro, reco_ener_pro, off_angle_pro, xi_pro, gammaness_pro],
+          names=["MC_Energy", "reco_Energy", "off_angle", "xi", "gammaness"])
+p.write(f"{args.outdir}/{args.outfile}_proton.h5", path="/reco_events", format="hdf5",
+        compression=True)
+
+e = Table([mc_ener_ele, reco_ener_ele, off_angle_ele, xi_ele, gammaness_ele],
+          names=["MC_Energy", "reco_Energy", "off_angle", "xi", "gammaness"])
+e.write(f"{args.outdir}/{args.outfile}_electron.h5", path="/reco_events", format="hdf5",
+        compression=True)

@@ -34,7 +34,7 @@ def draw_from_distribution(dist, abscis, n_draws=100, k=1):
     except AttributeError:
         unit = 1
 
-    cdfspline = interpolate.splrep(cdf, abscis, k=1)
+    cdfspline = interpolate.splrep(cdf, abscis, k=k)
     randomx = interpolate.splev(np.random.random(n_draws), cdfspline)
 
     return randomx * unit
